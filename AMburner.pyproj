@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>c43ce05e-ab31-4080-ad1f-7bc8b64bca83</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>AMburner.py</StartupFile>
+    <StartupFile>memoryParse.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -23,6 +23,12 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AMburner.py" />
+    <Compile Include="memoryParse.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="serial_talk.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

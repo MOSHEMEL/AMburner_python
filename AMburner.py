@@ -1,4 +1,5 @@
 import time
+from serial_talk import read_serial, write_serial, read_all_mem, find_offset
 
 class Aptx():
     def __init__(self):
@@ -21,14 +22,8 @@ class Aptx():
         return str('\n'.join(textual_repr))
 
     def get_data(self):
-        # read snum mcu
-        # read snum apt
-        # read snum am
-        # read maximum
-        # find current am
-        # read date
-        # init done
-        pass
+        self.data = read_serial()
+        self.data["curent AM"] = find_offset()
 
     def set_data(self):
         pass
@@ -44,16 +39,16 @@ from tkinter import messagebox
 window = Tk()
  
 window.title("Armenta Burn device app")
-window.geometry('350x300')
+window.geometry('350x360')
 rcv_data = Text(window, width=40, height=apt.data_len)
 rcv_data.insert(INSERT,str(apt))
-lbl_mcusnum = Label(window, text="MCU Serial Number:").grid(column=0, row=1, sticky=W)
+lbl_mcusnum = Label(window, text="MCU Serial Number:").grid(column=0, row=2, sticky=W)
 txt_mcusnum = Entry(window,width=10)
-lbl_aptxsnum = Label(window, text="APTx Serial Number:").grid(column=0, row=2, sticky=W)
+lbl_aptxsnum = Label(window, text="APTx Serial Number:").grid(column=0, row=3, sticky=W)
 txt_aptxsnum = Entry(window,width=10)
-lbl_amsnum = Label(window, text="AM Serial Number:").grid(column=0, row=3, sticky=W)
+lbl_amsnum = Label(window, text="AM Serial Number:").grid(column=0, row=4, sticky=W)
 txt_amsnum = Entry(window,width=10)
-lbl_maxi = Label(window, text="Maximum pulses:").grid(column=0, row=4, sticky=W)
+lbl_maxi = Label(window, text="Maximum pulses:").grid(column=0, row=5, sticky=W)
 txt_maxi = Entry(window,width=5)
 erase_var = BooleanVar()
 init_var = BooleanVar()
@@ -89,18 +84,29 @@ def clicked():
         messagebox.showinfo('Error','Serial Number is wrong format')
     except ValueError:
         messagebox.showinfo('Error','Values Are Wrong!')
+    write_serial(apt.data, erase_var.get())
 
+def read_apt():
+    rcv_data.delete('1.0', END)
+    apt.get_data()
+    rcv_data.insert(INSERT, str(apt))
+
+def hex_read():
+    read_all_mem()
 
 burn_btn = Button(window, text="Burn baby Burn!", command=clicked)
+read_btn = Button(window, text="Read em up", command=read_apt)
+hex_dump = Button(window, text="dump memory", command=hex_read)
 rcv_data.grid(row=0, columnspan=2, sticky=N)
-txt_mcusnum.grid(column=1, row=1)
-txt_aptxsnum.grid(column=1, row=2)
-txt_amsnum.grid(column=1, row=3)
-txt_maxi.grid(column=1, row=4)
-check_init.grid(row=5, columnspan=2)
-check_erase.grid(row=6, columnspan=2)
-burn_btn.grid(row=7, columnspan=2)
-
+read_btn.grid(row=1,columnspan=2)
+txt_mcusnum.grid(column=1, row=2)
+txt_aptxsnum.grid(column=1, row=3)
+txt_amsnum.grid(column=1, row=4)
+txt_maxi.grid(column=1, row=5)
+check_init.grid(row=6, columnspan=2)
+check_erase.grid(row=7, columnspan=2)
+burn_btn.grid(row=8, columnspan=2)
+hex_dump.grid(row=9, columnspan=2)
 
 window.mainloop()
 # first we read the AM values:
