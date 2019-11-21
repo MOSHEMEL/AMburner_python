@@ -25,8 +25,8 @@ class Aptx():
         self.data = read_serial()
         self.data["curent AM"] = find_offset()
 
-    def set_data(self):
-        pass
+    def set_data(self, erase):
+        write_serial(self.data, erase)
 
     def write_log(self):
         pass
@@ -84,7 +84,9 @@ def clicked():
         messagebox.showinfo('Error','Serial Number is wrong format')
     except ValueError:
         messagebox.showinfo('Error','Values Are Wrong!')
-    write_serial(apt.data, erase_var.get())
+     # maybe pass through apt function like the read
+    apt.set_data(erase_var.get())
+
 
 def read_apt():
     rcv_data.delete('1.0', END)
