@@ -1,15 +1,16 @@
 import time
 from serial_talk import read_serial, write_serial, read_all_mem, find_offset
+from serial import *
 
 class Aptx():
     def __init__(self):
-        self.data = {"snum MCU":"deadbee1",
-                "snum APTx":"deadbee2",
-                "snum AM":"deadbee3",
-                "maximum AM":10000,
-                "curent AM":10,
-                "init done":True,
-                "date": int(time.time())}
+        self.data = {"snum MCU":"Unknown",
+                "snum APTx":"Unknown",
+                "snum AM":"Unknown",
+                "maximum AM":-1,
+                "curent AM":-1,
+                "init done":False,
+                "date": 0}
         self.data_len = len(self.data.keys())
 
     def __str__(self):
@@ -39,7 +40,7 @@ from tkinter import messagebox
 window = Tk()
  
 window.title("Armenta Burn device app")
-window.geometry('350x360')
+window.geometry('300x330')
 rcv_data = Text(window, width=40, height=apt.data_len)
 rcv_data.insert(INSERT,str(apt))
 lbl_mcusnum = Label(window, text="MCU Serial Number:").grid(column=0, row=2, sticky=W)
@@ -80,21 +81,29 @@ def clicked():
         apt.data["date"] = int(time.time())
         rcv_data.delete('1.0', END)
         rcv_data.insert(INSERT, str(apt))
+        apt.set_data(erase_var.get())
     except RuntimeError:
         messagebox.showinfo('Error','Serial Number is wrong format')
     except ValueError:
         messagebox.showinfo('Error','Values Are Wrong!')
-     # maybe pass through apt function like the read
-    apt.set_data(erase_var.get())
+    except SerialException:
+        messagebox.showinfo('Error','No device at COM7')
 
 
 def read_apt():
-    rcv_data.delete('1.0', END)
-    apt.get_data()
-    rcv_data.insert(INSERT, str(apt))
+    try:
+        apt.get_data()
+        rcv_data.delete('1.0', END)
+        rcv_data.insert(INSERT, str(apt))
+    except SerialException:
+        messagebox.showinfo('Error','No device at COM7')
 
 def hex_read():
-    read_all_mem()
+    try:
+        read_all_mem()
+    except SerialException:
+        messagebox.showinfo('Error','No device at COM7')
+
 
 burn_btn = Button(window, text="Burn baby Burn!", command=clicked)
 read_btn = Button(window, text="Read em up", command=read_apt)

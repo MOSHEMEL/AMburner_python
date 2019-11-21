@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>c43ce05e-ab31-4080-ad1f-7bc8b64bca83</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>memoryParse.py</StartupFile>
+    <StartupFile>AMburner.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
