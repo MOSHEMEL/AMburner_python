@@ -12,6 +12,9 @@ def read_serial():
 
     ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
     q = queue.LifoQueue(maxsize=20)
+    q.put("getid,1#\r\n")
+    q.put("getid,2#\r\n")
+    q.put("getid,3#\r\n")
     q.put("rd,1,0x000FFFF6#\r\n")
     q.put("rd,2,0x000FFFF6#\r\n")
     q.put("rd,3,0x000FFFF6#\r\n")
@@ -130,7 +133,7 @@ def read_all_mem():
     size_of_mem = int(1048576/(4*256)); # 8Mbits = 1,048,576 Bytes = 262144 sectors
     q = queue.LifoQueue(maxsize=size_of_mem+2) 
     for i in range(size_of_mem):
-        q.put("scan,1,{}#\r\n".format((size_of_mem-i-1)*256)) #Last in first out last is size-1
+        q.put("scan,3,{}#\r\n".format((size_of_mem-i-1)*256)) #Last in first out last is size-1
     q.put("debug#\r\n")
 
     recent_milis = int(time.time())
