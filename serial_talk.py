@@ -15,10 +15,10 @@ def read_serial():
     q.put("rd,1,0x000FFFF6#\r\n")
     q.put("rd,2,0x000FFFF6#\r\n")
     q.put("rd,3,0x000FFFF6#\r\n")
-    q.put("rd,1,0x000FFFEE#\r\n")
-    q.put("rd,1,0x000FFFE6#\r\n")
-    q.put("test02#\r\n") # TODO: replace by readap
-    q.put("test#\r\n")
+    q.put("rd,3,0x000FFFEE#\r\n")
+    q.put("rd,3,0x000FFFE6#\r\n")
+    q.put("readap#\r\n") # TODO: replace by readap
+    q.put("debug#\r\n")
 
     recent_milis = int(time.time())
     timeout = 3
@@ -93,12 +93,13 @@ def write_serial(apt_struct, erase):
     q.put("snum,1,{}#\r\n".format(apt_struct["snum MCU"]))
     q.put("snum,2,{}#\r\n".format(apt_struct["snum APTx"]))
     q.put("snum,3,{}#\r\n".format(apt_struct["snum AM"]))
-    q.put("maxi,1,{}#\r\n".format(apt_struct["maximum AM"]))
-    q.put("date,1,{}#\r\n".format(apt_struct["date"]))
+    q.put("maxi,3,{}#\r\n".format(apt_struct["maximum AM"]))
+    q.put("date,3,{}#\r\n".format(apt_struct["date"]))
     if apt_struct["init done"]:
-        q.put("initdone,1#\r\n")
+        q.put("initdone,3#\r\n")
     if erase:
-        q.put("nuke,1#\r\n")
+        q.put("nuke,3#\r\n")
+    q.put("debug#\r\n")
 
     recent_milis = int(time.time())
     timeout = 3
@@ -126,10 +127,11 @@ def read_all_mem():
     baudRate = 115200
 
     ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
-    size_of_mem = 262144 # 8Mbits = 1,048,576 Bytes = 262144 sectors
-    q = queue.LifoQueue(maxsize=size_of_mem) 
+    size_of_mem = int(1048576/(4*256)); # 8Mbits = 1,048,576 Bytes = 262144 sectors
+    q = queue.LifoQueue(maxsize=size_of_mem+2) 
     for i in range(size_of_mem):
         q.put("scan,1,{}#\r\n".format((size_of_mem-i-1)*256)) #Last in first out last is size-1
+    q.put("debug#\r\n")
 
     recent_milis = int(time.time())
     timeout = 3
@@ -175,9 +177,8 @@ def find_offset():
             "init done":True,
             "date": int(time.time())}
     """
-    q.put("find,1#\r\n")
-    q.put("find,2#\r\n")
-    q.put("find,3#\r\n")
+    q.put("find,3,2#\r\n")
+    q.put("debug#\r\n")
 
 
     recent_milis = int(time.time())
@@ -193,9 +194,10 @@ def find_offset():
         if data:
             try:
                 data_r = data.decode('ascii')
-                if data_r.startswith("FIND:"):
+                if data_r.startswith("FIND "):
                     parsed = data_r.split(' ')
                     # "FIND %d %lu time offset %d\r\n"
+                    print("{} is {}".format(parsed[1],parsed[5]))
                     offset[parsed[1]] = parsed[5]
                 print(data_r)
             except UnicodeDecodeError:
@@ -203,7 +205,7 @@ def find_offset():
         if q.empty() and  (time.time() - recent_milis > timeout):
             print(offset)
             ser.close()
-            return offset["1"]
+            return int(int(offset["2"])/8)
 
 if __name__ == "__main__":
     print(read_serial())
