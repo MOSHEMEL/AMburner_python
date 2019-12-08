@@ -1,6 +1,7 @@
 import time
-from serial_talk import read_serial, write_serial, read_all_mem, find_offset
+from serial_talk import read_serial, write_serial, read_all_mem, find_offset, COMPORT
 from serial import *
+
 
 class Aptx():
     def __init__(self):
@@ -87,7 +88,7 @@ def clicked():
     except ValueError:
         messagebox.showinfo('Error','Values Are Wrong!')
     except SerialException:
-        messagebox.showinfo('Error','No device at COM7')
+        messagebox.showinfo('Error','No device at {}'.format(COMPORT))
 
 
 def read_apt():
@@ -96,13 +97,13 @@ def read_apt():
         rcv_data.delete('1.0', END)
         rcv_data.insert(INSERT, str(apt))
     except SerialException:
-        messagebox.showinfo('Error','No device at COM7')
+        messagebox.showinfo('Error','No device at {}'.format(COMPORT))
 
 def hex_read():
     try:
         read_all_mem()
     except SerialException:
-        messagebox.showinfo('Error','No device at COM7')
+        messagebox.showinfo('Error','No device at {}'.format(COMPORT))
 
 
 burn_btn = Button(window, text="Burn baby Burn!", command=clicked)

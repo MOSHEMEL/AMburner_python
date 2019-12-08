@@ -3,12 +3,15 @@ import queue
 import time
 from memoryParse import translate_tobin
 
+COMPORT = "COM32"
+serialPort = COMPORT
+baudRate = 115200
+snum_adress = "000ffff6"
+date_adress = "000fffee"
+maxi_adress = "000fffe6"
+
 def read_serial():
-    serialPort = "COM7"
-    baudRate = 115200
-    snum_adress = "000ffff6"
-    date_adress = "000fffee"
-    maxi_adress = "000fffe6"
+
 
     ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
     q = queue.LifoQueue(maxsize=20)
@@ -20,7 +23,7 @@ def read_serial():
     q.put("rd,3,0x000FFFF6#\r\n")
     q.put("rd,3,0x000FFFEE#\r\n")
     q.put("rd,3,0x000FFFE6#\r\n")
-    q.put("readap#\r\n") # TODO: replace by readap
+    q.put("readap#\r\n") 
     q.put("debug#\r\n")
 
     recent_milis = int(time.time())
@@ -75,12 +78,6 @@ def read_serial():
     return apt
 
 def write_serial(apt_struct, erase):
-    serialPort = "COM7"
-    baudRate = 115200
-    snum_adress = "000ffff6"
-    date_adress = "000fffee"
-    maxi_adress = "000fffe6"
-    init_adress = "000fffde"
 
     ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
     q = queue.LifoQueue(maxsize=20)
@@ -99,7 +96,9 @@ def write_serial(apt_struct, erase):
     q.put("maxi,3,{}#\r\n".format(apt_struct["maximum AM"]))
     q.put("date,3,{}#\r\n".format(apt_struct["date"]))
     if apt_struct["init done"]:
-        q.put("initdone,3#\r\n")
+        q.put("initdone?#\r\n")
+        q.put("initdone!#\r\n")
+        q.put("initdone!#\r\n")
     if erase:
         q.put("nuke,3#\r\n")
     q.put("debug#\r\n")
@@ -126,9 +125,6 @@ def write_serial(apt_struct, erase):
     ser.close()
 
 def read_all_mem():
-    serialPort = "COM7"
-    baudRate = 115200
-
     ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
     size_of_mem = int(1048576/(4*256)); # 8Mbits = 1,048,576 Bytes = 262144 sectors
     q = queue.LifoQueue(maxsize=size_of_mem+2) 
@@ -137,16 +133,12 @@ def read_all_mem():
     q.put("debug#\r\n")
 
     recent_milis = int(time.time())
-    timeout = 3
+    timeout = 1
     f = open("memory.txt", "w")
     try:
         while True:
             data = ser.readline()[:-2] #the last bit gets rid of the new-line chars
-            if not q.empty() and (time.time() - recent_milis > timeout):
-                send_data = q.get()
-                print(send_data)
-                ser.write(send_data.encode('ascii'))
-                recent_milis = int(time.time())
+
             if data:
                 try:
                     data_r = data.decode('ascii')
@@ -156,7 +148,12 @@ def read_all_mem():
                     print(data_r)
                 except UnicodeDecodeError:
                     print(data)
-            if q.empty() and  (time.time() - recent_milis > timeout):
+            elif not q.empty() and (time.time() - recent_milis > timeout):
+                send_data = q.get()
+                print(send_data)
+                ser.write(send_data.encode('ascii'))
+                recent_milis = int(time.time())
+            elif q.empty() and  (time.time() - recent_milis > timeout):
                 break
             # print(time.time() - int(recent_milis))
         ser.close()
@@ -166,9 +163,6 @@ def read_all_mem():
         f.close()
 
 def find_offset():
-    serialPort = "COM7"
-    baudRate = 115200
-
     ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
     q = queue.LifoQueue(maxsize=20)
     """
