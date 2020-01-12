@@ -1,9 +1,9 @@
 import serial
 import queue
 import time
-from memoryParse import translate_tobin
+import memoryParse
 
-COMPORT = "COM32"
+COMPORT = "COM43"
 serialPort = COMPORT
 baudRate = 115200
 snum_adress = "000ffff6"
@@ -14,17 +14,19 @@ def read_serial():
 
 
     ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
-    q = queue.LifoQueue(maxsize=20)
-    q.put("getid,1#\r\n")
-    q.put("getid,2#\r\n")
-    q.put("getid,3#\r\n")
-    q.put("rd,1,0x000FFFF6#\r\n")
-    q.put("rd,2,0x000FFFF6#\r\n")
-    q.put("rd,3,0x000FFFF6#\r\n")
-    q.put("rd,3,0x000FFFEE#\r\n")
-    q.put("rd,3,0x000FFFE6#\r\n")
-    q.put("readap#\r\n") 
-    q.put("debug#\r\n")
+    q = queue.LifoQueue(maxsize=25)
+    q.put("getid,1#")
+    q.put("getid,2#")
+    q.put("getid,3#")
+    q.put("rd,1,0x000FFFF6#")
+    q.put("rd,2,0x000FFFF6#")
+    q.put("rd,3,0x000FFFF6#")
+    q.put("rd,3,0x000FFFEE#")
+    q.put("rd,3,0x000FFFE6#")
+    q.put("status2,3#")
+    q.put("status1,3#")
+    q.put("testread,3#") 
+    q.put("debug#")
 
     recent_milis = int(time.time())
     timeout = 3
@@ -65,8 +67,11 @@ def read_serial():
                         apt['snum APTx'] = int(parsed[2],16)
                 elif data_r.startswith('cs[3] read'):
                     parsed = data_r.split(' ')
-                    if int(parsed[5],16) == int(snum_adress,16):
-                        apt['snum AM'] = int(parsed[2],16)
+                    try:
+                        if int(parsed[5],16) == int(snum_adress,16):
+                            apt['snum AM'] = int(parsed[2],16)
+                    except IndexError:
+                        pass
                 print(data_r)
             except UnicodeDecodeError:
                 print(data)
@@ -80,7 +85,7 @@ def read_serial():
 def write_serial(apt_struct, erase):
 
     ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
-    q = queue.LifoQueue(maxsize=20)
+    q = queue.LifoQueue(maxsize=45)
     """
         apt = {"snum MCU":"",
             "snum APTx":"",
@@ -90,18 +95,32 @@ def write_serial(apt_struct, erase):
             "init done":True,
             "date": int(time.time())}
     """
-    q.put("snum,1,{}#\r\n".format(apt_struct["snum MCU"]))
-    q.put("snum,2,{}#\r\n".format(apt_struct["snum APTx"]))
-    q.put("snum,3,{}#\r\n".format(apt_struct["snum AM"]))
-    q.put("maxi,3,{}#\r\n".format(apt_struct["maximum AM"]))
-    q.put("date,3,{}#\r\n".format(apt_struct["date"]))
+    q.put("!!!WRITE COMPLETE!!!#")
+    q.put("snum,1,{}#".format(apt_struct["snum MCU"]))
+    q.put("snum,2,{}#".format(apt_struct["snum APTx"]))
+    q.put("snum,3,{}#".format(apt_struct["snum AM"]))
+    q.put("maxi,3,{}#".format(apt_struct["maximum AM"]))
+    q.put("date,3,{}#".format(apt_struct["date"]))
     if apt_struct["init done"]:
-        q.put("initdone?#\r\n")
-        q.put("initdone!#\r\n")
-        q.put("initdone!#\r\n")
+        q.put("initdone?#")
+        q.put("initdone!#")
+        q.put("initdone!#")
     if erase:
-        q.put("nuke,3#\r\n")
-    q.put("debug#\r\n")
+        for j in range(10):
+            q.put("NOP#")
+        q.put("nuke,3#")
+
+    q.put("set registers readonly#")
+    q.put("status2,3#")
+    q.put("status1,3#")
+    q.put("statusw,3,8001#")
+    q.put("clear registers#")
+    q.put("status2,3#")
+    q.put("status1,3#")
+    q.put("statusw,3,0000#")
+    q.put("status2,3#")
+    q.put("status1,3#")
+    q.put("debug#")
 
     recent_milis = int(time.time())
     timeout = 3
@@ -126,11 +145,11 @@ def write_serial(apt_struct, erase):
 
 def read_all_mem():
     ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
-    size_of_mem = int(1048576/(4*256)); # 8Mbits = 1,048,576 Bytes = 262144 sectors
+    size_of_mem = int(1048576/(256)); # 8Mbits = 1,048,576 Bytes = 262144 sectors
     q = queue.LifoQueue(maxsize=size_of_mem+2) 
     for i in range(size_of_mem):
-        q.put("scan,3,{}#\r\n".format((size_of_mem-i-1)*256)) #Last in first out last is size-1
-    q.put("debug#\r\n")
+        q.put("scan,1,{}#".format((size_of_mem-i-1)*256)) #Last in first out last is size-1
+    q.put("debug#")
 
     recent_milis = int(time.time())
     timeout = 1
@@ -158,9 +177,10 @@ def read_all_mem():
             # print(time.time() - int(recent_milis))
         ser.close()
         f.close()
-        transtranslate_tobin()
+        memoryParse.translate_tobin()
     except KeyboardInterrupt:
         f.close()
+        memoryParse.translate_tobin()
 
 def find_offset():
     ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
@@ -174,8 +194,9 @@ def find_offset():
             "init done":True,
             "date": int(time.time())}
     """
-    q.put("find,3,2#\r\n")
-    q.put("debug#\r\n")
+    q.put("!!!READ COMPLETE!!!#")
+    q.put("find,3,2#")
+    q.put("debug#")
 
 
     recent_milis = int(time.time())
@@ -193,7 +214,7 @@ def find_offset():
                 data_r = data.decode('ascii')
                 if data_r.startswith("FIND "):
                     parsed = data_r.split(' ')
-                    # "FIND %d %lu time offset %d\r\n"
+                    # "FIND %d %lu time offset %d"
                     print("{} is {}".format(parsed[1],parsed[5]))
                     offset[parsed[1]] = parsed[5]
                 print(data_r)
