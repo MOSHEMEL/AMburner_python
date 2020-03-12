@@ -3,7 +3,7 @@ import queue
 import time
 import memoryParse
 
-COMPORT = "COM43"
+COMPORT = "COM7"
 serialPort = COMPORT
 baudRate = 115200
 snum_adress = "000ffff6"
@@ -72,7 +72,8 @@ def read_serial():
                             apt['snum AM'] = int(parsed[2],16)
                     except IndexError:
                         pass
-                print(data_r)
+                if not "VMDPE" in data_r:
+                    print(data_r)
             except UnicodeDecodeError:
                 print(data)
         if q.empty() and  (time.time() - recent_milis > timeout):
@@ -135,7 +136,8 @@ def write_serial(apt_struct, erase):
         if data:
             try:
                 data_r = data.decode('ascii')
-                print(data_r)
+                if not "VMDPE" in data_r:
+                    print(data_r)
             except UnicodeDecodeError:
                 print(data)
         if q.empty() and  (time.time() - recent_milis > timeout):
@@ -145,10 +147,8 @@ def write_serial(apt_struct, erase):
 
 def read_all_mem():
     ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
-    size_of_mem = int(1048576/(256)); # 8Mbits = 1,048,576 Bytes = 262144 sectors
-    q = queue.LifoQueue(maxsize=size_of_mem+2) 
-    for i in range(size_of_mem):
-        q.put("scan,1,{}#".format((size_of_mem-i-1)*256)) #Last in first out last is size-1
+    q = queue.LifoQueue(maxsize=2) 
+    q.put("dump#")
     q.put("debug#")
 
     recent_milis = int(time.time())
@@ -164,7 +164,8 @@ def read_all_mem():
                     if data_r.startswith('0x'):
                         f.write(data_r)
                         f.write('\n')
-                    print(data_r)
+                    if not "VMDPE" in data_r:
+                        print(data_r)
                 except UnicodeDecodeError:
                     print(data)
             elif not q.empty() and (time.time() - recent_milis > timeout):
@@ -172,7 +173,7 @@ def read_all_mem():
                 print(send_data)
                 ser.write(send_data.encode('ascii'))
                 recent_milis = int(time.time())
-            elif q.empty() and  (time.time() - recent_milis > timeout):
+            elif q.empty() and  (time.time() - recent_milis > 1200000):
                 break
             # print(time.time() - int(recent_milis))
         ser.close()
@@ -217,7 +218,8 @@ def find_offset():
                     # "FIND %d %lu time offset %d"
                     print("{} is {}".format(parsed[1],parsed[5]))
                     offset[parsed[1]] = parsed[5]
-                print(data_r)
+                if not "VMDPE" in data_r:
+                    print(data_r)
             except UnicodeDecodeError:
                 print(data)
         if q.empty() and  (time.time() - recent_milis > timeout):
