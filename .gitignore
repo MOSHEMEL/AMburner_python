@@ -338,3 +338,10 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+/build
+/dist/AMburner/tcl
+/dist/AMburner/tk
+/dist/AMburner
+/serial_talk.pyo
+/memoryParse.pyo
+/AM_properties.pyo

@@ -153,6 +153,8 @@ burn_btn.grid(row=8, columnspan=2)
 hex_dump.grid(row=9, columnspan=2)
 ports_menu.grid(row=10, columnspan=2)
 window.mainloop()
+
+input()
 # first we read the AM values:
 # we read the MCU header, APTx header and AM header
 # Then we ask for:
