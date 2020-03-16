@@ -23,6 +23,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AMburner.py" />
+    <Compile Include="AM_properties.py" />
     <Compile Include="memoryParse.py">
       <SubType>Code</SubType>
     </Compile>

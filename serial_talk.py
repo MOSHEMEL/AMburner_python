@@ -2,18 +2,14 @@ import serial
 import queue
 import time
 import memoryParse
+import sys
+import AM_properties
 
-COMPORT = "COM7"
-serialPort = COMPORT
-baudRate = 115200
-snum_adress = "000ffff6"
-date_adress = "000fffee"
-maxi_adress = "000fffe6"
 
 def read_serial():
 
 
-    ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
+    ser = serial.Serial(AM_properties.serialPort , AM_properties.baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
     q = queue.LifoQueue(maxsize=25)
     q.put("getid,1#")
     q.put("getid,2#")
@@ -59,20 +55,20 @@ def read_serial():
                     init_flag = (data_r.split(' ')[1] == "DONE")
                 elif data_r.startswith('cs[1] read'):
                     parsed = data_r.split(' ')
-                    if int(parsed[5],16) == int(snum_adress,16):
+                    if int(parsed[5],16) == int(AM_properties.snum_adress,16):
                         apt['snum MCU'] = int(parsed[2],16)
                 elif data_r.startswith('cs[2] read'):
                     parsed = data_r.split(' ')
-                    if int(parsed[5],16) == int(snum_adress,16):
+                    if int(parsed[5],16) == int(AM_properties.snum_adress,16):
                         apt['snum APTx'] = int(parsed[2],16)
                 elif data_r.startswith('cs[3] read'):
                     parsed = data_r.split(' ')
                     try:
-                        if int(parsed[5],16) == int(snum_adress,16):
+                        if int(parsed[5],16) == int(AM_properties.snum_adress,16):
                             apt['snum AM'] = int(parsed[2],16)
                     except IndexError:
                         pass
-                if not "VMDPE" in data_r:
+                if not "VMDP" in data_r:
                     print(data_r)
             except UnicodeDecodeError:
                 print(data)
@@ -85,8 +81,8 @@ def read_serial():
 
 def write_serial(apt_struct, erase):
 
-    ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
-    q = queue.LifoQueue(maxsize=45)
+    ser = serial.Serial(AM_properties.serialPort , AM_properties.baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
+    q = queue.LifoQueue(maxsize=50)
     """
         apt = {"snum MCU":"",
             "snum APTx":"",
@@ -107,6 +103,9 @@ def write_serial(apt_struct, erase):
         q.put("initdone!#")
         q.put("initdone!#")
     if erase:
+        q.put("scan,3,0#")
+        q.put("scan,3,0#")
+        q.put("scan,3,0#")
         for j in range(10):
             q.put("NOP#")
         q.put("nuke,3#")
@@ -121,6 +120,7 @@ def write_serial(apt_struct, erase):
     q.put("statusw,3,0000#")
     q.put("status2,3#")
     q.put("status1,3#")
+    q.put("testread,3#") 
     q.put("debug#")
 
     recent_milis = int(time.time())
@@ -136,7 +136,7 @@ def write_serial(apt_struct, erase):
         if data:
             try:
                 data_r = data.decode('ascii')
-                if not "VMDPE" in data_r:
+                if not "VMDP" in data_r:
                     print(data_r)
             except UnicodeDecodeError:
                 print(data)
@@ -146,7 +146,7 @@ def write_serial(apt_struct, erase):
     ser.close()
 
 def read_all_mem():
-    ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
+    ser = serial.Serial(AM_properties.serialPort , AM_properties.baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
     q = queue.LifoQueue(maxsize=2) 
     q.put("dump#")
     q.put("debug#")
@@ -164,7 +164,7 @@ def read_all_mem():
                     if data_r.startswith('0x'):
                         f.write(data_r)
                         f.write('\n')
-                    if not "VMDPE" in data_r:
+                    if not "VMDP" in data_r:
                         print(data_r)
                 except UnicodeDecodeError:
                     print(data)
@@ -184,7 +184,7 @@ def read_all_mem():
         memoryParse.translate_tobin()
 
 def find_offset():
-    ser = serial.Serial(serialPort , baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
+    ser = serial.Serial(AM_properties.serialPort , AM_properties.baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
     q = queue.LifoQueue(maxsize=20)
     """
         apt = {"snum MCU":"",
@@ -218,7 +218,7 @@ def find_offset():
                     # "FIND %d %lu time offset %d"
                     print("{} is {}".format(parsed[1],parsed[5]))
                     offset[parsed[1]] = parsed[5]
-                if not "VMDPE" in data_r:
+                if not "VMDP" in data_r:
                     print(data_r)
             except UnicodeDecodeError:
                 print(data)
@@ -227,5 +227,35 @@ def find_offset():
             ser.close()
             return int(int(offset["2"])/8)
 
+def enumerate_ports():
+    """ Lists serial port names
+
+        :raises EnvironmentError:
+            On unsupported or unknown platforms
+        :returns:
+            A list of the serial ports available on the system
+    """
+    if sys.platform.startswith('win'):
+        ports = ['COM%s' % (i + 1) for i in range(256)]
+    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        # this excludes your current terminal "/dev/tty"
+        ports = glob.glob('/dev/tty[A-Za-z]*')
+    elif sys.platform.startswith('darwin'):
+        ports = glob.glob('/dev/tty.*')
+    else:
+        raise EnvironmentError('Unsupported platform')
+
+    result = []
+    for port in ports:
+        try:
+            s = serial.Serial(port)
+            s.close()
+            result.append(port)
+        except (OSError, serial.SerialException):
+            pass
+    return result
+
+
 if __name__ == "__main__":
+    COMPORT = enumerate_ports()[-1]
     print(read_serial())

@@ -1,7 +1,10 @@
 import time
-from serial_talk import read_serial, write_serial, read_all_mem, find_offset, COMPORT
+from serial_talk import read_serial, write_serial, read_all_mem, find_offset, enumerate_ports
 from serial import *
+import AM_properties
+import logging
 
+logging.basicConfig(filename='burn.log', filemode='a', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 
 class Aptx():
     def __init__(self):
@@ -30,10 +33,14 @@ class Aptx():
     def set_data(self, erase):
         write_serial(self.data, erase)
 
+    def dump_mem():
+        read_all_mem()
+
     def write_log(self):
         pass
 
 apt = Aptx()
+serial_ports = enumerate_ports()
 
 from tkinter import *
 from tkinter import messagebox
@@ -41,9 +48,22 @@ from tkinter import messagebox
 window = Tk()
  
 window.title("Armenta Burn device app")
-window.geometry('300x330')
+window.geometry('300x360')
+
+port_COMPORT = StringVar(window)
+# throw exception if there is no serial present
+if len(serial_ports) == 0:
+    messagebox.showinfo('Error','No COM Ports connected!')
+    port_COMPORT.set("None")
+    serial_ports = ["None"]
+else:
+    port_COMPORT.set(serial_ports[-1])
+
 rcv_data = Text(window, width=40, height=apt.data_len)
 rcv_data.insert(INSERT,str(apt))
+
+ports_menu = OptionMenu(window, port_COMPORT, *serial_ports)
+
 lbl_mcusnum = Label(window, text="MCU Serial Number:").grid(column=0, row=2, sticky=W)
 txt_mcusnum = Entry(window,width=10)
 lbl_aptxsnum = Label(window, text="APTx Serial Number:").grid(column=0, row=3, sticky=W)
@@ -56,6 +76,8 @@ erase_var = BooleanVar()
 init_var = BooleanVar()
 check_init = Checkbutton(window, text="Write init", var=init_var)
 check_erase = Checkbutton(window, text="Erase Chip", var=erase_var)
+
+
 def parse_snum(sn_text):
     
     if len(sn_text.split('-')) == 2:
@@ -65,8 +87,11 @@ def parse_snum(sn_text):
     else:
         return int(sn_text)
 
-def clicked():
+
+def burn_AM():
     try:
+        AM_properties.serialPort = port_COMPORT.get()
+        logging.info('Write memory at : {}'.format(AM_properties.serialPort))
         apt.data["snum MCU"] = parse_snum(txt_mcusnum.get())
         apt.data["snum APTx"] = parse_snum(txt_aptxsnum.get())
         apt.data["snum AM"] = parse_snum(txt_amsnum.get())
@@ -83,6 +108,7 @@ def clicked():
         rcv_data.delete('1.0', END)
         rcv_data.insert(INSERT, str(apt))
         apt.set_data(erase_var.get())
+        logging.info(str(apt))
     except RuntimeError:
         messagebox.showinfo('Error','Serial Number is wrong format')
     except ValueError:
@@ -91,24 +117,30 @@ def clicked():
         messagebox.showinfo('Error','No device at {}'.format(COMPORT))
 
 
-def read_apt():
+def read_AM():
     try:
+        AM_properties.serialPort = port_COMPORT.get()
+        logging.info('Read memory at : {}'.format(AM_properties.serialPort))
         apt.get_data()
         rcv_data.delete('1.0', END)
         rcv_data.insert(INSERT, str(apt))
+        logging.info(str(apt))
     except SerialException:
         messagebox.showinfo('Error','No device at {}'.format(COMPORT))
 
-def hex_read():
+
+def dump_AM():
     try:
-        read_all_mem()
+        AM_properties.serialPort = port_COMPORT.get()
+        logging.info('Dump memory at : {}'.format(AM_properties.serialPort))
+        apt.dump_mem()
     except SerialException:
         messagebox.showinfo('Error','No device at {}'.format(COMPORT))
 
 
-burn_btn = Button(window, text="Burn baby Burn!", command=clicked)
-read_btn = Button(window, text="Read em up", command=read_apt)
-hex_dump = Button(window, text="dump memory", command=hex_read)
+burn_btn = Button(window, text="Burn baby Burn!", command=burn_AM)
+read_btn = Button(window, text="Read em up", command=read_AM)
+hex_dump = Button(window, text="dump memory", command=dump_AM)
 rcv_data.grid(row=0, columnspan=2, sticky=N)
 read_btn.grid(row=1,columnspan=2)
 txt_mcusnum.grid(column=1, row=2)
@@ -119,7 +151,7 @@ check_init.grid(row=6, columnspan=2)
 check_erase.grid(row=7, columnspan=2)
 burn_btn.grid(row=8, columnspan=2)
 hex_dump.grid(row=9, columnspan=2)
-
+ports_menu.grid(row=10, columnspan=2)
 window.mainloop()
 # first we read the AM values:
 # we read the MCU header, APTx header and AM header
