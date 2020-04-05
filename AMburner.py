@@ -33,7 +33,7 @@ class Aptx():
     def set_data(self, erase):
         write_serial(self.data, erase)
 
-    def dump_mem():
+    def dump_mem(self):
         read_all_mem()
 
     def write_log(self):

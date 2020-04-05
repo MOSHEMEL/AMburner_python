@@ -10,15 +10,20 @@ def read_serial():
 
 
     ser = serial.Serial(AM_properties.serialPort , AM_properties.baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
-    q = queue.LifoQueue(maxsize=25)
+    q = queue.LifoQueue(maxsize=45)
     q.put("getid,1#")
     q.put("getid,2#")
     q.put("getid,3#")
     q.put("rd,1,0x000FFFF6#")
+    q.put("Read SNUM 1#")
     q.put("rd,2,0x000FFFF6#")
+    q.put("Read SNUM 2#")
     q.put("rd,3,0x000FFFF6#")
+    q.put("Read SNUM 3#")
     q.put("rd,3,0x000FFFEE#")
+    q.put("Read DATE 3#")
     q.put("rd,3,0x000FFFE6#")
+    q.put("Read MAX 3#")
     q.put("status2,3#")
     q.put("status1,3#")
     q.put("testread,3#") 
@@ -55,17 +60,17 @@ def read_serial():
                     init_flag = (data_r.split(' ')[1] == "DONE")
                 elif data_r.startswith('cs[1] read'):
                     parsed = data_r.split(' ')
-                    if int(parsed[5],16) == int(AM_properties.snum_adress,16):
-                        apt['snum MCU'] = int(parsed[2],16)
+                    if int(parsed[4],16) == int(AM_properties.snum_adress,16):
+                        apt['snum MCU'] = int(parsed[2].rstrip(':'),16)
                 elif data_r.startswith('cs[2] read'):
                     parsed = data_r.split(' ')
-                    if int(parsed[5],16) == int(AM_properties.snum_adress,16):
-                        apt['snum APTx'] = int(parsed[2],16)
+                    if int(parsed[4],16) == int(AM_properties.snum_adress,16):
+                        apt['snum APTx'] = int(parsed[2].rstrip(':'),16)
                 elif data_r.startswith('cs[3] read'):
                     parsed = data_r.split(' ')
                     try:
-                        if int(parsed[5],16) == int(AM_properties.snum_adress,16):
-                            apt['snum AM'] = int(parsed[2],16)
+                        if int(parsed[4],16) == int(AM_properties.snum_adress,16):
+                            apt['snum AM'] = int(parsed[2].rstrip(':'),16)
                     except IndexError:
                         pass
                 if not "VMDP" in data_r:
@@ -147,13 +152,19 @@ def write_serial(apt_struct, erase):
 
 def read_all_mem():
     ser = serial.Serial(AM_properties.serialPort , AM_properties.baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
-    q = queue.LifoQueue(maxsize=2) 
+    q = queue.LifoQueue(maxsize=5) 
     q.put("dump#")
-    q.put("debug#")
 
     recent_milis = int(time.time())
     timeout = 1
+    q.put("debug#")
+    send_data = q.get()
+    print(send_data)
+    ser.write(send_data.encode('ascii'))
+    data = ser.readline()
+    time.sleep(3)
     f = open("memory.txt", "w")
+    log_ = open("mem_log.txt", "w")
     try:
         while True:
             data = ser.readline()[:-2] #the last bit gets rid of the new-line chars
@@ -164,8 +175,11 @@ def read_all_mem():
                     if data_r.startswith('0x'):
                         f.write(data_r)
                         f.write('\n')
+                    if data_r == "cs[dump] Done!":
+                        break
                     if not "VMDP" in data_r:
                         print(data_r)
+                        log_.write(data_r)
                 except UnicodeDecodeError:
                     print(data)
             elif not q.empty() and (time.time() - recent_milis > timeout):
@@ -178,9 +192,11 @@ def read_all_mem():
             # print(time.time() - int(recent_milis))
         ser.close()
         f.close()
+        log_.close()
         memoryParse.translate_tobin()
     except KeyboardInterrupt:
         f.close()
+        log_.close()
         memoryParse.translate_tobin()
 
 def find_offset():
@@ -213,11 +229,11 @@ def find_offset():
         if data:
             try:
                 data_r = data.decode('ascii')
-                if data_r.startswith("FIND "):
+                if data_r.startswith("offset "):
                     parsed = data_r.split(' ')
                     # "FIND %d %lu time offset %d"
-                    print("{} is {}".format(parsed[1],parsed[5]))
-                    offset[parsed[1]] = parsed[5]
+                    print("offset is {}".format(parsed[1]))
+                    offset["2"] = parsed[1]
                 if not "VMDP" in data_r:
                     print(data_r)
             except UnicodeDecodeError:
@@ -225,7 +241,11 @@ def find_offset():
         if q.empty() and  (time.time() - recent_milis > timeout):
             print(offset)
             ser.close()
-            return int(int(offset["2"])/8)
+            try:
+                temp = int(int(offset["2"],16)/8)
+                return temp
+            except TypeError:
+                return -1
 
 def enumerate_ports():
     """ Lists serial port names
