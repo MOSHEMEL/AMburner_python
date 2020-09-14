@@ -60,12 +60,20 @@ def read_serial():
                     init_flag = (data_r.split(' ')[1] == "DONE")
                 elif data_r.startswith('cs[1] read'):
                     parsed = data_r.split(' ')
-                    if int(parsed[4],16) == int(AM_properties.snum_adress,16):
-                        apt['snum MCU'] = int(parsed[2].rstrip(':'),16)
+                    try:
+                        if int(parsed[4],16) == int(AM_properties.snum_adress,16):
+                            apt['snum MCU'] = int(parsed[2].rstrip(':'),16)
+                    except ValueError:
+                        if int(parsed[5],16) == int(AM_properties.snum_adress,16):
+                            apt['snum MCU'] = int(parsed[2].rstrip(':'),16)
                 elif data_r.startswith('cs[2] read'):
                     parsed = data_r.split(' ')
-                    if int(parsed[4],16) == int(AM_properties.snum_adress,16):
-                        apt['snum APTx'] = int(parsed[2].rstrip(':'),16)
+                    try:
+                        if int(parsed[4],16) == int(AM_properties.snum_adress,16):
+                            apt['snum APTx'] = int(parsed[2].rstrip(':'),16)
+                    except ValueError:
+                        if int(parsed[5],16) == int(AM_properties.snum_adress,16):
+                            apt['snum APTx'] = int(parsed[2].rstrip(':'),16)
                 elif data_r.startswith('cs[3] read'):
                     parsed = data_r.split(' ')
                     try:
@@ -73,6 +81,9 @@ def read_serial():
                             apt['snum AM'] = int(parsed[2].rstrip(':'),16)
                     except IndexError:
                         pass
+                    except ValueError:
+                        if int(parsed[5],16) == int(AM_properties.snum_adress,16):
+                            apt['snum AM'] = int(parsed[2].rstrip(':'),16)
                 if not "VMDP" in data_r:
                     print(data_r)
             except UnicodeDecodeError:
@@ -229,11 +240,11 @@ def find_offset():
         if data:
             try:
                 data_r = data.decode('ascii')
-                if data_r.startswith("offset "):
+                if data_r.startswith("pulses "):
                     parsed = data_r.split(' ')
                     # "FIND %d %lu time offset %d"
-                    print("offset is {}".format(parsed[1]))
-                    offset["2"] = parsed[1]
+                    print("pulses is {}".format(parsed[2]))
+                    offset["2"] = parsed[2]
                 if not "VMDP" in data_r:
                     print(data_r)
             except UnicodeDecodeError:
@@ -242,7 +253,7 @@ def find_offset():
             print(offset)
             ser.close()
             try:
-                temp = int(int(offset["2"],16)/8)
+                temp = int(offset["2"])
                 return temp
             except TypeError:
                 return -1
@@ -275,6 +286,43 @@ def enumerate_ports():
             pass
     return result
 
+def pop_apt(ammount):
+    ser = serial.Serial(AM_properties.serialPort , AM_properties.baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
+    number_of_slots = ammount//100
+    q = queue.LifoQueue(maxsize=number_of_slots+1) 
+    for i in range(number_of_slots,2094,-1):
+        q.put("wrt,2,0x{:08x},0x{:08x}#".format(i*4, i*100))
+
+    recent_milis = int(time.time())
+    timeout = 1
+    q.put("debug#")
+    send_data = q.get()
+    print(send_data)
+    ser.write(send_data.encode('ascii'))
+    data = ser.readline()
+    time.sleep(0.1)
+    try:
+        while True:
+            data = ser.readline()[:-2] #the last bit gets rid of the new-line chars
+
+            if data:
+                try:
+                    data_r = data.decode('ascii')
+                    if not "VMDP" in data_r:
+                        print(data_r)
+                except UnicodeDecodeError:
+                    print(data)
+            elif not q.empty() and (time.time() - recent_milis > timeout):
+                send_data = q.get()
+                print(send_data)
+                ser.write(send_data.encode('ascii'))
+                recent_milis = int(time.time())
+            elif q.empty() and  (time.time() - recent_milis > 20000):
+                break
+            # print(time.time() - int(recent_milis))
+        ser.close()
+    except KeyboardInterrupt:
+        pass
 
 if __name__ == "__main__":
     COMPORT = enumerate_ports()[-1]

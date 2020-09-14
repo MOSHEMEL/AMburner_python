@@ -1,5 +1,5 @@
 import time
-from serial_talk import read_serial, write_serial, read_all_mem, find_offset, enumerate_ports
+from serial_talk import read_serial, write_serial, read_all_mem, find_offset, enumerate_ports, pop_apt
 from serial import *
 import AM_properties
 import logging
@@ -48,7 +48,7 @@ from tkinter import messagebox
 window = Tk()
  
 window.title("Armenta Burn device app")
-window.geometry('300x360')
+window.geometry('300x390')
 
 port_COMPORT = StringVar(window)
 # throw exception if there is no serial present
@@ -136,11 +136,26 @@ def dump_AM():
         apt.dump_mem()
     except SerialException:
         messagebox.showinfo('Error','No device at {}'.format(COMPORT))
-
-
+        
+def pop180k():
+    try:
+        AM_properties.serialPort = port_COMPORT.get()
+        pop_apt(179900)
+    except SerialException:
+        messagebox.showinfo('Error','No device at {}'.format(COMPORT))
+        
+def pop240k():
+    try:
+        AM_properties.serialPort = port_COMPORT.get()
+        pop_apt(240000)
+    except SerialException:
+        messagebox.showinfo('Error','No device at {}'.format(COMPORT))
+        
 burn_btn = Button(window, text="Burn baby Burn!", command=burn_AM)
 read_btn = Button(window, text="Read em up", command=read_AM)
 hex_dump = Button(window, text="dump memory", command=dump_AM)
+populate180k = Button(window, text="apt 180k", command=pop180k)
+populate240k = Button(window, text="apt 240k", command=pop240k)
 rcv_data.grid(row=0, columnspan=2, sticky=N)
 read_btn.grid(row=1,columnspan=2)
 txt_mcusnum.grid(column=1, row=2)
@@ -152,6 +167,8 @@ check_erase.grid(row=7, columnspan=2)
 burn_btn.grid(row=8, columnspan=2)
 hex_dump.grid(row=9, columnspan=2)
 ports_menu.grid(row=10, columnspan=2)
+populate180k.grid(row=11, column=0)
+populate240k.grid(row=11, column=1)
 window.mainloop()
 
 input()
