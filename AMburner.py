@@ -1,5 +1,5 @@
 import time
-from serial_talk import read_serial, write_serial, read_all_mem, find_offset, enumerate_ports, pop_apt
+from serial_talk import read_serial, write_serial, read_all_mem, find_offset, enumerate_ports
 from serial import *
 import AM_properties
 import logging
@@ -48,12 +48,10 @@ class json_ES_Format():
 
 class Aptx():
     def __init__(self):
-        self.data = {"snum MCU":"Unknown",
-                "snum APTx":"Unknown",
+        self.data = {
                 "snum AM":"Unknown",
                 "maximum AM":-1,
-                "curent AM":-1,
-                "init done":False,
+                "current AM":-1,
                 "date": 0}
         self.data_len = len(self.data.keys())
 
@@ -104,17 +102,11 @@ rcv_data.insert(INSERT,str(apt))
 
 ports_menu = OptionMenu(window, port_COMPORT, *serial_ports)
 
-lbl_mcusnum = Label(window, text="MCU Serial Number:").grid(column=0, row=2, sticky=W)
-txt_mcusnum = Entry(window,width=10)
-lbl_aptxsnum = Label(window, text="APTx Serial Number:").grid(column=0, row=3, sticky=W)
-txt_aptxsnum = Entry(window,width=10)
 lbl_amsnum = Label(window, text="AM Serial Number:").grid(column=0, row=4, sticky=W)
 txt_amsnum = Entry(window,width=10)
 lbl_maxi = Label(window, text="Maximum pulses:").grid(column=0, row=5, sticky=W)
 txt_maxi = Entry(window,width=5)
 erase_var = BooleanVar()
-init_var = BooleanVar()
-check_init = Checkbutton(window, text="Write init", var=init_var)
 check_erase = Checkbutton(window, text="Erase Chip", var=erase_var)
 
 
@@ -132,18 +124,12 @@ def burn_AM():
     try:
         AM_properties.serialPort = port_COMPORT.get()
         logging.info('Write memory at : {}'.format(AM_properties.serialPort))
-        apt.data["snum MCU"] = parse_snum(txt_mcusnum.get())
-        apt.data["snum APTx"] = parse_snum(txt_aptxsnum.get())
         apt.data["snum AM"] = parse_snum(txt_amsnum.get())
         apt.data["maximum AM"] = int(txt_maxi.get())
         if erase_var.get():
             print("erased chip!!")
             apt.data["curent AM"] = 0
-        if init_var.get():
-            print("Init made!!")
-            apt.data["init done"] = True
-        else:
-            apt.data["init done"] = False
+
         apt.data["date"] = int(time.time())
         rcv_data.delete('1.0', END)
         rcv_data.insert(INSERT, str(apt))
@@ -157,7 +143,10 @@ def burn_AM():
     except ValueError:
         messagebox.showinfo('Error','Values Are Wrong!')
     except SerialException:
-        messagebox.showinfo('Error','No device at {}'.format(COMPORT))
+        try:
+            messagebox.showinfo('Error','No device at {}'.format(COMPORT))
+        except NameError:
+            messagebox.showinfo('Error','No devices at COM')
 
 
 def read_AM():
@@ -169,7 +158,11 @@ def read_AM():
         rcv_data.insert(INSERT, str(apt))
         logging.info(str(apt))
     except SerialException:
-        messagebox.showinfo('Error','No device at {}'.format(COMPORT))
+        try:
+            messagebox.showinfo('Error','No device at {}'.format(COMPORT))
+        except NameError:
+            messagebox.showinfo('Error','No devices at COM')
+
 
 
 def dump_AM():
@@ -178,56 +171,24 @@ def dump_AM():
         logging.info('Dump memory at : {}'.format(AM_properties.serialPort))
         apt.dump_mem()
     except SerialException:
-        messagebox.showinfo('Error','No device at {}'.format(COMPORT))
+        try:
+            messagebox.showinfo('Error','No device at {}'.format(COMPORT))
+        except NameError:
+            messagebox.showinfo('Error','No devices at COM')
         
-def pop180k():
-    try:
-        AM_properties.serialPort = port_COMPORT.get()
-        pop_apt(179900)
-    except SerialException:
-        messagebox.showinfo('Error','No device at {}'.format(COMPORT))
-        
-def pop240k():
-    try:
-        AM_properties.serialPort = port_COMPORT.get()
-        pop_apt(240000)
-    except SerialException:
-        messagebox.showinfo('Error','No device at {}'.format(COMPORT))
+
         
 burn_btn = Button(window, text="Burn baby Burn!", command=burn_AM)
 read_btn = Button(window, text="Read em up", command=read_AM)
 hex_dump = Button(window, text="dump memory", command=dump_AM)
-populate180k = Button(window, text="apt 180k", command=pop180k)
-populate240k = Button(window, text="apt 240k", command=pop240k)
 rcv_data.grid(row=0, columnspan=2, sticky=N)
 read_btn.grid(row=1,columnspan=2)
-txt_mcusnum.grid(column=1, row=2)
-txt_aptxsnum.grid(column=1, row=3)
 txt_amsnum.grid(column=1, row=4)
 txt_maxi.grid(column=1, row=5)
-check_init.grid(row=6, columnspan=2)
 check_erase.grid(row=7, columnspan=2)
 burn_btn.grid(row=8, columnspan=2)
 hex_dump.grid(row=9, columnspan=2)
 ports_menu.grid(row=10, columnspan=2)
-populate180k.grid(row=11, column=0)
-populate240k.grid(row=11, column=1)
 window.mainloop()
 
 input()
-# first we read the AM values:
-# we read the MCU header, APTx header and AM header
-# Then we ask for:
-# 1. MAXIMUM PULSES
-# 2. SNUM for AM
-# 3. SNUM for APTx
-# 4. SNUM for MCU
-# 5. check button if init was done
-# and we have burn button
-# burn does the next:
-# erase the whole chip of AM
-# write snum, date (current milis since epoch), maximum and init to chip
-# write snum to mcu
-# write snum to aptx
-# THEN:
-# we write a log with the datetime as name into a folder

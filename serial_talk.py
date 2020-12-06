@@ -11,13 +11,7 @@ def read_serial():
 
     ser = serial.Serial(AM_properties.serialPort , AM_properties.baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
     q = queue.LifoQueue(maxsize=45)
-    q.put("getid,1#")
-    q.put("getid,2#")
     q.put("getid,3#")
-    q.put("rd,1,0x000FFFF6#")
-    q.put("Read SNUM 1#")
-    q.put("rd,2,0x000FFFF6#")
-    q.put("Read SNUM 2#")
     q.put("rd,3,0x000FFFF6#")
     q.put("Read SNUM 3#")
     q.put("rd,3,0x000FFFEE#")
@@ -31,15 +25,12 @@ def read_serial():
 
     recent_milis = int(time.time())
     timeout = 3
-    apt = {"snum MCU":"",
-            "snum APTx":"",
+    apt = {
             "snum AM":"",
             "maximum AM":0,
             "curent AM":0,
-            "init done":True,
             "date": int(time.time())}
 
-    init_flag = False
     while True:
         data = ser.readline()[:-2] #the last bit gets rid of the new-line chars
         if not q.empty() and (time.time() - recent_milis > timeout):
@@ -56,24 +47,6 @@ def read_serial():
                     apt['date'] = int(data_r.split(' ')[1])
                 elif data_r.startswith('MAXI'):
                     apt['maximum AM'] = int(data_r.split(' ')[1])
-                elif data_r.startswith('INIT'):
-                    init_flag = (data_r.split(' ')[1] == "DONE")
-                elif data_r.startswith('cs[1] read'):
-                    parsed = data_r.split(' ')
-                    try:
-                        if int(parsed[4],16) == int(AM_properties.snum_adress,16):
-                            apt['snum MCU'] = int(parsed[2].rstrip(':'),16)
-                    except ValueError:
-                        if int(parsed[5],16) == int(AM_properties.snum_adress,16):
-                            apt['snum MCU'] = int(parsed[2].rstrip(':'),16)
-                elif data_r.startswith('cs[2] read'):
-                    parsed = data_r.split(' ')
-                    try:
-                        if int(parsed[4],16) == int(AM_properties.snum_adress,16):
-                            apt['snum APTx'] = int(parsed[2].rstrip(':'),16)
-                    except ValueError:
-                        if int(parsed[5],16) == int(AM_properties.snum_adress,16):
-                            apt['snum APTx'] = int(parsed[2].rstrip(':'),16)
                 elif data_r.startswith('cs[3] read'):
                     parsed = data_r.split(' ')
                     try:
@@ -89,9 +62,7 @@ def read_serial():
             except UnicodeDecodeError:
                 print(data)
         if q.empty() and  (time.time() - recent_milis > timeout):
-            apt['init done'] = init_flag
             break
-        # print(time.time() - int(recent_milis))
     ser.close()
     return apt
 
@@ -109,15 +80,9 @@ def write_serial(apt_struct, erase):
             "date": int(time.time())}
     """
     q.put("!!!WRITE COMPLETE!!!#")
-    q.put("snum,1,{}#".format(apt_struct["snum MCU"]))
-    q.put("snum,2,{}#".format(apt_struct["snum APTx"]))
     q.put("snum,3,{}#".format(apt_struct["snum AM"]))
     q.put("maxi,3,{}#".format(apt_struct["maximum AM"]))
     q.put("date,3,{}#".format(apt_struct["date"]))
-    if apt_struct["init done"]:
-        q.put("initdone?#")
-        q.put("initdone!#")
-        q.put("initdone!#")
     if erase:
         q.put("scan,3,0#")
         q.put("scan,3,0#")
@@ -285,44 +250,6 @@ def enumerate_ports():
         except (OSError, serial.SerialException):
             pass
     return result
-
-def pop_apt(ammount):
-    ser = serial.Serial(AM_properties.serialPort , AM_properties.baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
-    number_of_slots = ammount//100
-    q = queue.LifoQueue(maxsize=number_of_slots+1) 
-    for i in range(number_of_slots,2094,-1):
-        q.put("wrt,2,0x{:08x},0x{:08x}#".format(i*4, i*100))
-
-    recent_milis = int(time.time())
-    timeout = 1
-    q.put("debug#")
-    send_data = q.get()
-    print(send_data)
-    ser.write(send_data.encode('ascii'))
-    data = ser.readline()
-    time.sleep(0.1)
-    try:
-        while True:
-            data = ser.readline()[:-2] #the last bit gets rid of the new-line chars
-
-            if data:
-                try:
-                    data_r = data.decode('ascii')
-                    if not "VMDP" in data_r:
-                        print(data_r)
-                except UnicodeDecodeError:
-                    print(data)
-            elif not q.empty() and (time.time() - recent_milis > timeout):
-                send_data = q.get()
-                print(send_data)
-                ser.write(send_data.encode('ascii'))
-                recent_milis = int(time.time())
-            elif q.empty() and  (time.time() - recent_milis > 20000):
-                break
-            # print(time.time() - int(recent_milis))
-        ser.close()
-    except KeyboardInterrupt:
-        pass
 
 if __name__ == "__main__":
     COMPORT = enumerate_ports()[-1]
