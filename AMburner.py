@@ -3,8 +3,48 @@ from serial_talk import read_serial, write_serial, read_all_mem, find_offset, en
 from serial import *
 import AM_properties
 import logging
+import json
+from requests import get
+
+
+VERSION_AMBURNER = '1.0.0'
 
 logging.basicConfig(filename='burn.log', filemode='a', format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
+class json_ES_Format():
+        def get_IP(self):
+            try:
+                return get('https://api.ipify.org').text
+            except:
+                return '127.0.0.1'
+        def set_write(self, snum_f, maxi_f, date_f, is_nuked):
+            self.Action = 'write'
+            self.ip_origin = self.get_IP()
+
+            self.AM_serial = snum_f
+            self.AM_maximum = maxi_f
+            self.AM_date_of_write = date_f
+            self.AM_is_nuked = is_nuked
+            self.version_AM_Burner = VERSION_AMBURNER
+        def set_read(self, snum_f, maxi_f, date_f, current_f):
+            self.Action = 'read'
+            self.ip_origin = self.get_IP()
+
+            self.AM_serial = snum_f
+            self.AM_maximum = maxi_f
+            self.AM_current = current_f
+            self.AM_date_of_write = date_f
+            self.version_AM_Burner = VERSION_AMBURNER
+        def set_dump(self, snum_f, maxi_f, date_f, current_f, DATA):
+            self.read(snum_f, maxi_f, date_f, current_f)
+            self.AM_data_raw = DATA
+            self.version_AM_Burner = VERSION_AMBURNER
+        def authenticate(self, name, distributor, passwd):
+            self.name = name
+            self.distributor= distributor
+        def get_json(self):
+            return json.dumps(self.__dict__)
+        def send_ES(self):
+            pass
 
 class Aptx():
     def __init__(self):
@@ -47,7 +87,7 @@ from tkinter import messagebox
  
 window = Tk()
  
-window.title("Armenta Burn device app")
+window.title(f'Armenta Burner v{VERSION_AMBURNER}')
 window.geometry('300x390')
 
 port_COMPORT = StringVar(window)
@@ -109,6 +149,9 @@ def burn_AM():
         rcv_data.insert(INSERT, str(apt))
         apt.set_data(erase_var.get())
         logging.info(str(apt))
+        
+        # create json
+
     except RuntimeError:
         messagebox.showinfo('Error','Serial Number is wrong format')
     except ValueError:
