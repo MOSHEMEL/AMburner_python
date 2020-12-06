@@ -24,7 +24,7 @@ class json_ES_Format():
 
             self.AM_serial = snum_f
             self.AM_maximum = maxi_f
-            self.AM_date_of_write = date_f
+            self.AM_date_of_write = self.format_t(date_f)
             self.AM_is_nuked = is_nuked
             self.version_AM_Burner = VERSION_AMBURNER
 
@@ -36,9 +36,11 @@ class json_ES_Format():
             self.AM_serial = snum_f
             self.AM_maximum = maxi_f
             self.AM_current = current_f
-            self.AM_date_of_write = date_f
+            self.AM_date_of_write = self.format_t(date_f)
             self.version_AM_Burner = VERSION_AMBURNER
 
+        def format_t(self, date_f):
+            return time.strftime('%Y%m%d_%H%M%S', time.localtime(int(date_f)))
 
         def set_dump(self, snum_f, maxi_f, date_f, current_f):
             self.read(snum_f, maxi_f, date_f, current_f)
@@ -58,6 +60,10 @@ class json_ES_Format():
             with open("memory.bin", "rb") as f:
                 encodedMem = base64.b64encode(f.read())
                 self.DATA = encodedMem.decode()
+
+        def write_log(self):
+            with open(f'{self.AM_serial}___{self.AM_date_of_write}.json', 'w') as fn:
+                json.dump(self.__dict__, fn)
 
         def send_ES(self):
             pass
@@ -90,8 +96,7 @@ class Aptx():
     def dump_mem(self):
         read_all_mem()
 
-    def write_log(self):
-        pass
+
 
 apt = Aptx()
 serial_ports = enumerate_ports()
@@ -150,20 +155,20 @@ def burn_AM():
         rcv_data.delete('1.0', END)
         rcv_data.insert(INSERT, str(apt))
 
+                # create json
+        json_sender = json_ES_Format()
+        json_sender.COM_PORT = AM_properties.serialPort
+        json_sender.set_write(
+            snum_f = apt.data["snum AM"],
+            maxi_f = apt.data["maximum AM"],
+            date_f= apt.data["date"],
+            is_nuked=erase_var.get())
+        json_sender.write_log()
 
         apt.set_data(erase_var.get())
         logging.info(str(apt))
         
-        # create json
-        json_sender = json_ES_Format()
-        json_sender.set_write(
-            snum_f = apt.data["snum AM"],
-            maxi_f = apt.data["maximum AM"],
-            date_f=apt.data["date"],
-            is_nuked=erase_var.get())
 
-        with open(f'{apt.data["snum AM"]}___{apt.data["date"]}.json', 'w') as fn:
-            json.dump(json_sender.__dict__, fn)
 
     except RuntimeError:
         messagebox.showinfo('Error','Serial Number is wrong format')
@@ -187,14 +192,14 @@ def read_AM():
 
         # create json
         json_sender = json_ES_Format()
+        json_sender.COM_PORT = AM_properties.serialPort
         json_sender.set_read(
             snum_f = apt.data["snum AM"],
             maxi_f = apt.data["maximum AM"],
             date_f=apt.data["date"],
             current_f=apt.data["current AM"])
+        json_sender.write_log()
 
-        with open(f'{apt.data["snum AM"]}___{apt.data["date"]}.json', 'w') as fn:
-            json.dump(json_sender.__dict__, fn)
     except SerialException:
         try:
             messagebox.showinfo('Error','No device at {}'.format(COMPORT))
@@ -211,14 +216,14 @@ def dump_AM():
         apt.dump_mem()
         # create json
         json_sender = json_ES_Format()
+        json_sender.COM_PORT = AM_properties.serialPort
         json_sender.set_dump(
             snum_f = apt.data["snum AM"],
             maxi_f = apt.data["maximum AM"],
             date_f=apt.data["date"],
             current_f=apt.data["current AM"])
+        json_sender.write_log()
 
-        with open(f'{apt.data["snum AM"]}___{apt.data["date"]}.json', 'w') as fn:
-            json.dump(json_sender.__dict__, fn)
     except SerialException:
         try:
             messagebox.showinfo('Error','No device at {}'.format(COMPORT))
