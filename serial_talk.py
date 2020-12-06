@@ -28,7 +28,7 @@ def read_serial():
     apt = {
             "snum AM":"",
             "maximum AM":0,
-            "curent AM":0,
+            "current AM":0,
             "date": int(time.time())}
 
     while True:
@@ -70,15 +70,7 @@ def write_serial(apt_struct, erase):
 
     ser = serial.Serial(AM_properties.serialPort , AM_properties.baudRate, timeout=1, writeTimeout=0) #ensure non-blocking
     q = queue.LifoQueue(maxsize=50)
-    """
-        apt = {"snum MCU":"",
-            "snum APTx":"",
-            "snum AM":"",
-            "maximum AM":0,
-            "curent AM":0,
-            "init done":True,
-            "date": int(time.time())}
-    """
+
     q.put("!!!WRITE COMPLETE!!!#")
     q.put("snum,3,{}#".format(apt_struct["snum AM"]))
     q.put("maxi,3,{}#".format(apt_struct["maximum AM"]))
@@ -183,7 +175,7 @@ def find_offset():
             "snum APTx":"",
             "snum AM":"",
             "maximum AM":0,
-            "curent AM":0,
+            "current AM":0,
             "init done":True,
             "date": int(time.time())}
     """

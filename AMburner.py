@@ -5,7 +5,7 @@ import AM_properties
 import logging
 import json
 from requests import get
-
+import base64
 
 VERSION_AMBURNER = '1.0.0'
 
@@ -16,6 +16,8 @@ class json_ES_Format():
                 return get('https://api.ipify.org').text
             except:
                 return '127.0.0.1'
+
+
         def set_write(self, snum_f, maxi_f, date_f, is_nuked):
             self.Action = 'write'
             self.ip_origin = self.get_IP()
@@ -25,6 +27,8 @@ class json_ES_Format():
             self.AM_date_of_write = date_f
             self.AM_is_nuked = is_nuked
             self.version_AM_Burner = VERSION_AMBURNER
+
+
         def set_read(self, snum_f, maxi_f, date_f, current_f):
             self.Action = 'read'
             self.ip_origin = self.get_IP()
@@ -34,15 +38,27 @@ class json_ES_Format():
             self.AM_current = current_f
             self.AM_date_of_write = date_f
             self.version_AM_Burner = VERSION_AMBURNER
-        def set_dump(self, snum_f, maxi_f, date_f, current_f, DATA):
+
+
+        def set_dump(self, snum_f, maxi_f, date_f, current_f):
             self.read(snum_f, maxi_f, date_f, current_f)
-            self.AM_data_raw = DATA
+            self.get_DATA()
             self.version_AM_Burner = VERSION_AMBURNER
+
+
         def authenticate(self, name, distributor, passwd):
             self.name = name
             self.distributor= distributor
+
+
         def get_json(self):
             return json.dumps(self.__dict__)
+
+        def get_DATA(self):
+            with open("memory.bin", "rb") as f:
+                encodedMem = base64.b64encode(f.read())
+                self.DATA = encodedMem.decode()
+
         def send_ES(self):
             pass
 
@@ -66,7 +82,7 @@ class Aptx():
 
     def get_data(self):
         self.data = read_serial()
-        self.data["curent AM"] = find_offset()
+        self.data["current AM"] = find_offset()
 
     def set_data(self, erase):
         write_serial(self.data, erase)
@@ -128,15 +144,26 @@ def burn_AM():
         apt.data["maximum AM"] = int(txt_maxi.get())
         if erase_var.get():
             print("erased chip!!")
-            apt.data["curent AM"] = 0
+            apt.data["current AM"] = 0
 
         apt.data["date"] = int(time.time())
         rcv_data.delete('1.0', END)
         rcv_data.insert(INSERT, str(apt))
+
+
         apt.set_data(erase_var.get())
         logging.info(str(apt))
         
         # create json
+        json_sender = json_ES_Format()
+        json_sender.set_write(
+            snum_f = apt.data["snum AM"],
+            maxi_f = apt.data["maximum AM"],
+            date_f=apt.data["date"],
+            is_nuked=erase_var.get())
+
+        with open(f'{apt.data["snum AM"]}___{apt.data["date"]}.json', 'w') as fn:
+            json.dump(json_sender.__dict__, fn)
 
     except RuntimeError:
         messagebox.showinfo('Error','Serial Number is wrong format')
@@ -157,6 +184,17 @@ def read_AM():
         rcv_data.delete('1.0', END)
         rcv_data.insert(INSERT, str(apt))
         logging.info(str(apt))
+
+        # create json
+        json_sender = json_ES_Format()
+        json_sender.set_read(
+            snum_f = apt.data["snum AM"],
+            maxi_f = apt.data["maximum AM"],
+            date_f=apt.data["date"],
+            current_f=apt.data["current AM"])
+
+        with open(f'{apt.data["snum AM"]}___{apt.data["date"]}.json', 'w') as fn:
+            json.dump(json_sender.__dict__, fn)
     except SerialException:
         try:
             messagebox.showinfo('Error','No device at {}'.format(COMPORT))
@@ -169,7 +207,18 @@ def dump_AM():
     try:
         AM_properties.serialPort = port_COMPORT.get()
         logging.info('Dump memory at : {}'.format(AM_properties.serialPort))
+        apt.get_data()
         apt.dump_mem()
+        # create json
+        json_sender = json_ES_Format()
+        json_sender.set_dump(
+            snum_f = apt.data["snum AM"],
+            maxi_f = apt.data["maximum AM"],
+            date_f=apt.data["date"],
+            current_f=apt.data["current AM"])
+
+        with open(f'{apt.data["snum AM"]}___{apt.data["date"]}.json', 'w') as fn:
+            json.dump(json_sender.__dict__, fn)
     except SerialException:
         try:
             messagebox.showinfo('Error','No device at {}'.format(COMPORT))
