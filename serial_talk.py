@@ -180,7 +180,7 @@ def find_offset():
             "date": int(time.time())}
     """
     q.put("!!!READ COMPLETE!!!#")
-    q.put("find,3,2#")
+    q.put("find,3#")
     q.put("debug#")
 
 

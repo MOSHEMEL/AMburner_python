@@ -345,3 +345,5 @@ healthchecksdb
 /serial_talk.pyo
 /memoryParse.pyo
 /AM_properties.pyo
+/env
+/user_credentials.csv
