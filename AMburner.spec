@@ -4,10 +4,10 @@ block_cipher = None
 
 
 a = Analysis(['AMburner.py'],
-             pathex=['C:\\Users\\nicko\\source\\repos\\AMburner'],
-             binaries=[],
+             pathex=['env\\Lib\\site-packages', 'C:\\Users\\nicko\\source\\repos\\AMburner'],
+             binaries=[('ARmentaSmall.png', '.')],
              datas=[],
-             hiddenimports=['serial'],
+             hiddenimports=['serial', 'requests'],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],
