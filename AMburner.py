@@ -103,6 +103,7 @@ class json_ES_Format():
             self.local_time = time.strftime('%d/%m/%Y %H:%M:%S', time.localtime(int(time.time())))
             self.local_time_t = time.strftime('%H:%M:%S', time.localtime(int(time.time())))
             self.local_time_d = time.strftime('%d/%m/%Y', time.localtime(int(time.time())))
+            self.local_time_d_formated_now = time.strftime('%Y%m%d_%H%M%S', time.localtime(int(time.time())))
             return time.strftime('%Y%m%d_%H%M%S', time.localtime(int(date_f)))
 
         def set_dump(self, snum_f, maxi_f, date_f, current_f):
@@ -125,7 +126,7 @@ class json_ES_Format():
                 self.DATA = encodedMem.decode()
 
         def write_log(self):
-            fname = f'{self.AM_serial}___{self.AM_date_of_write}.json'
+            fname = f'{self.AM_serial}___{self.local_time_d_formated_now}.json'
             with open(fname, 'w') as fn:
                 json.dump(self.__dict__, fn)
             return fname
