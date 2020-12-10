@@ -106,7 +106,7 @@ class json_ES_Format():
             return time.strftime('%Y%m%d_%H%M%S', time.localtime(int(date_f)))
 
         def set_dump(self, snum_f, maxi_f, date_f, current_f):
-            self.read(snum_f, maxi_f, date_f, current_f)
+            self.set_read(snum_f, maxi_f, date_f, current_f)
             self.get_DATA()
             self.version_AM_Burner = VERSION_AMBURNER
 
